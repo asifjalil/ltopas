@@ -291,13 +291,16 @@ void interrupt(int sig) {
  ****************************************************************************/
 void dolegend()
 {
-
     int i;
+    char *p = NULL;
     char host[MAXHOSTNAMELEN + 1];
     for (i = 0; i < sizeof(legend)/ sizeof(char *); i++) {
         mvaddstr(i,0,legend[i]);
     }
     gethostname(host, MAXHOSTNAMELEN);
+    // remove domain name
+    p = strchr(host, '.');
+    if (p != NULL) *p = '\0';
     i = strlen(host);
     i = 32 - i / 2;
     mvaddstr(0,i,host);
@@ -415,14 +418,19 @@ void p_net(double val, int row, int col)
 
 int compare_if_kbytes(const void *p, const void *q)
 {
+    double a = ((struct net_info *) p)->n_kbytes;
+    double b = ((struct net_info *) q)->n_kbytes;
 
-    return ((struct net_info *) q)->n_kbytes -
-        ((struct net_info *) p)->n_kbytes;
-
+    if (a < b) {
+        return 1;
+    } else if (a > b) {
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 void print_net_stats()
-
 {
     unsigned int i;
     int row, col, scr_row, scr_col;
@@ -439,8 +447,17 @@ void print_net_stats()
 
         old_net[i] = new_net[i];
     }
-}
 
+    // The loop above exited before all the network
+    // interfaces were printed, and therefore not all were saved
+    // in old_net. Use the following loop to save the remaining
+    // interfaces to old_net.
+    // Otherwise we would be missing current metrics for
+    // some of the interfaces.
+    for(; i < nnet; i++) {
+        old_net[i] = new_net[i];
+    }
+}
 /* ***************************************************************************
  * print disk stats
  *************************************************************************** */
